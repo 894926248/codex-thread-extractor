@@ -1,0 +1,7 @@
+interface:
+  display_name: "Codex Thread Extractor"
+  short_description: "Replay, audit, and recover Codex threads."
+  default_prompt: "Summarize, audit, or recover codex://threads/<id>."
+
+policy:
+  allow_implicit_invocation: true

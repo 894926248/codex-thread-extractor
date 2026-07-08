@@ -1,0 +1,28 @@
+# Release Notes
+
+## v1.0.0 - Initial Public Release
+
+Initial open-source release of Codex Thread Extractor for Codex Desktop.
+
+### Included
+
+- Portable `codex-thread-extractor` skill payload.
+- Local Codex thread extraction from JSONL session files.
+- Markdown and JSON extraction output.
+- Compact index mode for long conversations.
+- Resume brief and recovery packet modes for continuing interrupted, long,
+  short, or damaged threads.
+- Diagnostics for selected lines, skipped injected context, JSON decode errors,
+  payload counts, and emitted messages.
+- Clue-based lookup when the user gives a title, remembered content, file path,
+  command, error, or topic instead of a thread id.
+- Codex plugin metadata validated with the local Codex plugin validator.
+- Public user README and development documentation.
+
+### Verification
+
+- `python scripts\verify_plugin.py`
+- Codex plugin manifest validation passed.
+- Skill metadata validation passed.
+- Python compilation passed.
+- Extractor test suite passed: 4 tests.

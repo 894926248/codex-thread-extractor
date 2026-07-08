@@ -1,0 +1,41 @@
+{
+  "name": "codex-thread-extractor",
+  "version": "1.0.0",
+  "description": "Extract, replay, audit, and recover local Codex Desktop conversation threads.",
+  "author": {
+    "name": "894926248",
+    "url": "https://github.com/894926248"
+  },
+  "homepage": "https://github.com/894926248/codex-thread-extractor",
+  "repository": "https://github.com/894926248/codex-thread-extractor",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "threads",
+    "conversation",
+    "recovery",
+    "resume",
+    "audit",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Codex Thread Extractor",
+    "shortDescription": "Replay, audit, and recover Codex Desktop threads.",
+    "longDescription": "Use Codex Thread Extractor to summarize local Codex Desktop conversations, audit skill or rule behavior, and build bounded recovery handoffs for continuing short, long, or damaged threads.",
+    "developerName": "894926248",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Recover this codex://threads/<id> conversation.",
+      "Audit this Codex thread for rule compliance.",
+      "Summarize what happened in this thread."
+    ],
+    "websiteURL": "https://github.com/894926248/codex-thread-extractor",
+    "brandColor": "#2563EB"
+  }
+}
