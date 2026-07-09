@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.0.2 - Narrow Thread Activation
+
+### Fixed
+
+- Narrows automatic activation to explicit old Codex thread/history requests.
+- Clarifies that files, commands, errors, rules, memory, and topic words are
+  search clues only after the user asks to inspect old thread history.
+- Adds validation so the skill description cannot reintroduce broad non-thread
+  triggers.
+
+### Verification
+
+- `python scripts\verify_plugin.py`
+
 ## v1.0.1 - Delegated Trace Detection
 
 ### Fixed

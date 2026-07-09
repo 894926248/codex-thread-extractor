@@ -1,11 +1,17 @@
 ---
 name: codex-thread-extractor
-description: Use when Codex needs to locate, inspect, summarize, audit, recover, or continue local Codex Desktop conversation threads from a thread id, codex://threads link, title, remembered content, file path, command, error, or other clues.
+description: Use when the user explicitly asks to inspect, summarize, audit, recover, continue, or find a prior Codex Desktop conversation/thread, or provides a codex://threads link or thread id.
 ---
 
 # Codex Thread Extractor
 
 Extract local Codex Desktop JSONL threads into concise evidence for thread lookup, audit, recovery, and safe continuation.
+
+## Activation Gate
+
+Use this skill only when the current request clearly asks for old Codex thread evidence: a `codex://threads/<id>` link, thread id, previous/prior/old conversation, thread recovery, thread continuation, or thread/skill/rule audit.
+
+Do not use it for ordinary project work, debugging, planning, rules, memory, files, commands, errors, or performance issues merely because those words could be search clues. File paths, commands, errors, titles, and topic words become clues only after the user has asked to find or inspect old Codex thread history.
 
 ## Core Route
 
@@ -30,7 +36,7 @@ Default outputs go to `tmp/codex-thread-extract/<thread-id>.json` and `.md`.
 
 ## Choose Mode
 
-- **Find thread:** when no id/link is provided, derive 1-3 concrete clues from the request and run `--find` before extracting.
+- **Find thread:** when old-thread intent is explicit but no id/link is provided, derive 1-3 concrete clues from the request and run `--find` before extracting.
 - **Review/audit:** summarize goals, constraints, decisions, actions, verification, mistakes, and unresolved work.
 - **Skill/rule audit:** compare expected behavior with observed turns; mark pass/fail/partial/not evidenced.
 - **Recovery/resume:** create a handoff for a new conversation to continue safely from an interrupted, long, short, or damaged thread.

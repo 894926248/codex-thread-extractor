@@ -36,10 +36,9 @@ Start a new Codex conversation after installing or updating the skill.
 
 ## Usage
 
-In Codex, the skill is intended to be selected automatically when your request
-needs evidence from local Codex Desktop thread history. You can provide a
-thread link/id, or just clues such as title words, file names, commands, errors,
-tool output, quoted message text, or topic terms.
+In Codex, the skill is intended to be selected automatically only when your
+request needs evidence from local Codex Desktop thread history. You can provide
+a thread link/id, or ask it to find an earlier Codex conversation from clues.
 
 Examples:
 
@@ -50,6 +49,9 @@ Recover the thread that changed the README so a new conversation can continue it
 ```
 
 You can still name the skill explicitly when you want to force that route.
+
+Ordinary project requests should not trigger this skill just because they
+mention files, commands, errors, rules, memory, or performance issues.
 
 Common direct script commands:
 
