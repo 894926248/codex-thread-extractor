@@ -125,21 +125,111 @@ def thread_id_from_session_file(path: Path) -> str | None:
     return None
 
 
-def searchable_record_text(record: dict[str, Any]) -> str:
+def searchable_record_snippet(record: dict[str, Any]) -> dict[str, Any] | None:
     payload = record.get("payload") if isinstance(record.get("payload"), dict) else {}
     payload_type = payload.get("type")
     if payload_type == "message":
         text = extract_text_from_content(payload.get("content"))
-        return "" if looks_like_injected_context(text) else text
+        if looks_like_injected_context(text):
+            return None
+        delegation = parse_codex_delegation(text) if text else None
+        return {
+            "kind": "message",
+            "role": payload.get("role"),
+            "text": text,
+            "codex_delegation": bool(delegation),
+            "delegation_input": delegation.get("input") if delegation else None,
+        }
     if payload_type in {"function_call", "custom_tool_call"}:
         arguments = payload.get("input") if payload_type == "custom_tool_call" else payload.get("arguments")
         text = summarize_tool_call(payload.get("name"), arguments, max_chars=1200)
-        return "" if "extract_codex_thread.py" in text and "--find" in text else text
+        if "extract_codex_thread.py" in text and "--find" in text:
+            return None
+        return {
+            "kind": payload_type,
+            "role": "tool_call",
+            "name": payload.get("name"),
+            "text": text,
+            "codex_delegation": False,
+        }
     if payload_type in {"function_call_output", "custom_tool_call_output"}:
         output = payload.get("output")
         text = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False)
-        return preview_text(text, 1200)
-    return ""
+        return {
+            "kind": payload_type,
+            "role": "tool_output",
+            "text": preview_text(text, 1200),
+            "codex_delegation": False,
+        }
+    return None
+
+
+def snippet_match_weight(snippet: dict[str, Any]) -> int:
+    kind = snippet.get("kind")
+    if kind == "message":
+        role = snippet.get("role")
+        if role == "user":
+            return 120 if not snippet.get("codex_delegation") else 95
+        if role == "assistant":
+            return 90
+        return 75
+    if kind in {"function_call_output", "custom_tool_call_output"}:
+        return 30
+    if kind in {"function_call", "custom_tool_call"}:
+        return 15
+    return 10
+
+
+def snippet_compactness_bonus(snippet: dict[str, Any], query: str) -> int:
+    body = str(snippet.get("delegation_input") or snippet.get("text") or "")
+    compact = re.sub(r"\s+", " ", body).strip()
+    needle = re.sub(r"\s+", " ", query).strip()
+    if not compact or not needle:
+        return 0
+    compact_folded = compact.casefold()
+    needle_folded = needle.casefold()
+    if needle_folded in compact_folded:
+        ratio = len(needle) / max(len(compact), 1)
+        if ratio >= 0.85:
+            return 80
+        if ratio >= 0.55:
+            return 55
+        if ratio >= 0.35:
+            return 35
+        if ratio >= 0.20:
+            return 15
+        return 0
+    terms = [term for term in re.split(r"\s+", needle_folded) if term]
+    if terms and all(term in compact_folded for term in terms) and len(compact) <= len(needle) * 3:
+        return 10
+    return 0
+
+
+def snippet_meta_penalty(snippet: dict[str, Any]) -> int:
+    if snippet.get("kind") != "message" or snippet.get("codex_delegation"):
+        return 0
+    body = re.sub(r"\s+", " ", str(snippet.get("text") or "")).casefold()
+    penalty = 0
+    if "<codex_delegation>" in body or "source_thread_id" in body:
+        penalty += 25
+    if "create_thread" in body or "spawn_agent" in body or "read_thread" in body or "list_threads" in body:
+        penalty += 15
+    if "问题报告" in body or "audit" in body or "验证" in body:
+        penalty += 10
+    return penalty
+
+
+def search_result_score(result: ThreadSearchResult) -> tuple[int, str]:
+    score = 0
+    if "id" in result.matched_fields:
+        score += 1000
+    if "title" in result.matched_fields:
+        score += 300
+    snippet_scores = [max(0, int(snippet.get("match_score", 0)) - index * 5) for index, snippet in enumerate(result.snippets)]
+    if snippet_scores:
+        score += max(snippet_scores)
+        score += sum(min(5, max(0, item - 40) // 10) for item in snippet_scores[1:])
+    return score, result.updated_at or ""
 
 
 def find_threads(codex_home: Path, entries: list[ThreadIndexEntry], query: str, limit: int) -> list[ThreadSearchResult]:
@@ -186,12 +276,29 @@ def find_threads(codex_home: Path, entries: list[ThreadIndexEntry], query: str, 
                         record = json.loads(line)
                     except json.JSONDecodeError:
                         continue
-                    text = searchable_record_text(record)
+                    snippet = searchable_record_snippet(record)
+                    if not snippet:
+                        continue
+                    text = str(snippet.get("text") or "")
                     if not text or not query_matches(text, query):
                         continue
                     if "content" not in result.matched_fields:
                         result.matched_fields.append("content")
-                    result.snippets.append({"line": line_no, "text": preview_text(text, 260)})
+                    match_score = (
+                        snippet_match_weight(snippet)
+                        + snippet_compactness_bonus(snippet, query)
+                        - snippet_meta_penalty(snippet)
+                    )
+                    result.snippets.append(
+                        {
+                            "line": line_no,
+                            "text": preview_text(text, 260),
+                            "kind": snippet.get("kind"),
+                            "role": snippet.get("role"),
+                            "codex_delegation": bool(snippet.get("codex_delegation")),
+                            "match_score": match_score,
+                        }
+                    )
         except OSError:
             continue
 
@@ -202,7 +309,7 @@ def find_threads(codex_home: Path, entries: list[ThreadIndexEntry], query: str, 
             if len(results) >= limit and all(item.snippets or "content" not in item.matched_fields for item in results.values()):
                 break
 
-    ordered = sorted(results.values(), key=lambda item: item.updated_at or "", reverse=True)
+    ordered = sorted(results.values(), key=search_result_score, reverse=True)
     return ordered[:limit]
 
 

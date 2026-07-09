@@ -41,6 +41,12 @@ Default outputs go to `tmp/codex-thread-extract/<thread-id>.json` and `.md`.
 - **Skill/rule audit:** compare expected behavior with observed turns; mark pass/fail/partial/not evidenced.
 - **Recovery/resume:** create a handoff for a new conversation to continue safely from an interrupted, long, short, or damaged thread.
 
+## Route By Need
+
+- **Recent status only:** if the user only wants what the thread was last doing, a short state summary, or a quick sanity check, prefer native `read_thread`.
+- **Continue work:** if the user wants to resume work, recover next steps, identify key files/commands/verification, or avoid loading the full old thread, prefer `extract_codex_thread.py --with-tools --resume-brief --brief-only`.
+- **Long or damaged thread:** if the thread is long, truncated, corrupted, or the user asks for missing-evidence risk, add `--recovery`, then `--index` or line ranges only where needed.
+
 Use `--with-tools` for commands, patches, tool outputs, verification, or debugging history. Use `--include-context` only when the user explicitly asks for injected system/developer context.
 
 For very long threads, start with `--index`, then open only `--last`, `--from-line`, or `--to-line` ranges around the relevant phase.

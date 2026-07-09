@@ -1,5 +1,19 @@
 # Release Notes
 
+## v1.0.3 - Automatic Route By Need
+
+### Fixed
+
+- Adds explicit routing between native `read_thread` and `codex-thread-extractor`.
+- Uses native `read_thread` for quick recent-status checks.
+- Uses `resume-brief` / `recovery` / `index` for continue-work and damaged-thread scenarios.
+- Improves `--find` ranking so direct thread hits beat audit/meta threads that only quote the same clue.
+- Adds validation so the route-by-need section stays present in the skill.
+
+### Verification
+
+- `python scripts\verify_plugin.py`
+
 ## v1.0.2 - Narrow Thread Activation
 
 ### Fixed

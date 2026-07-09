@@ -105,6 +105,135 @@ def write_fixture(codex_home: Path) -> None:
     session_path.write_text("\n".join(json.dumps(item) for item in records) + "\n", encoding="utf-8")
 
 
+def write_find_ranking_fixture(codex_home: Path) -> None:
+    sessions = codex_home / "sessions" / "2026" / "07" / "09"
+    sessions.mkdir(parents=True)
+    raw_thread_id = "11111111-1111-1111-1111-111111111111"
+    delegated_thread_id = "22222222-2222-2222-2222-222222222222"
+    meta_thread_id = "33333333-3333-3333-3333-333333333333"
+    quoted_thread_id = "44444444-4444-4444-4444-444444444444"
+    query = "资料页 打开后 第一次 加载 慢"
+    (codex_home / "session_index.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "id": raw_thread_id,
+                        "thread_name": "raw prompt thread",
+                        "updated_at": "2026-07-09T00:00:00Z",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": delegated_thread_id,
+                        "thread_name": "delegated prompt thread",
+                        "updated_at": "2026-07-09T00:10:00Z",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": meta_thread_id,
+                        "thread_name": "meta audit thread",
+                        "updated_at": "2026-07-09T00:20:00Z",
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": quoted_thread_id,
+                        "thread_name": "quoted audit thread",
+                        "updated_at": "2026-07-09T00:30:00Z",
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    raw_records = [
+        {"type": "session_meta", "payload": {"id": raw_thread_id, "cwd": "C:/work"}},
+        {
+            "type": "response_item",
+            "timestamp": "2026-07-09T00:00:01Z",
+            "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": query}]},
+        },
+    ]
+    delegated_records = [
+        {"type": "session_meta", "payload": {"id": delegated_thread_id, "cwd": "C:/work"}},
+        {
+            "type": "response_item",
+            "timestamp": "2026-07-09T00:10:01Z",
+            "payload": {
+                "type": "message",
+                "role": "user",
+                "content": (
+                    "<codex_delegation>\n"
+                    "  <source_thread_id>99999999-8888-7777-6666-555555555555</source_thread_id>\n"
+                    f"  <input>{query}</input>\n"
+                    "</codex_delegation>"
+                ),
+            },
+        },
+    ]
+    meta_records = [
+        {"type": "session_meta", "payload": {"id": meta_thread_id, "cwd": "C:/work"}},
+        {
+            "type": "response_item",
+            "timestamp": "2026-07-09T00:20:01Z",
+            "payload": {
+                "type": "function_call",
+                "name": "create_thread",
+                "call_id": "call_meta",
+                "arguments": json.dumps({"prompt": query}),
+            },
+        },
+        {
+            "type": "response_item",
+            "timestamp": "2026-07-09T00:20:02Z",
+            "payload": {
+                "type": "function_call_output",
+                "call_id": "call_meta",
+                "output": json.dumps({"thread": {"preview": query}}, ensure_ascii=False),
+            },
+        },
+    ]
+    quoted_records = [
+        {"type": "session_meta", "payload": {"id": quoted_thread_id, "cwd": "C:/work"}},
+        {
+            "type": "response_item",
+            "timestamp": "2026-07-09T00:30:01Z",
+            "payload": {
+                "type": "message",
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": (
+                            "Codex Desktop 线程工具验证问题报告：使用 create_thread 验证自然任务时，"
+                            f"原始 prompt“{query}”被包进 delegation。这个线程只是审计，不是目标线程。"
+                        ),
+                    }
+                ],
+            },
+        },
+    ]
+    (sessions / f"rollout-test-{raw_thread_id}.jsonl").write_text(
+        "\n".join(json.dumps(item, ensure_ascii=False) for item in raw_records) + "\n",
+        encoding="utf-8",
+    )
+    (sessions / f"rollout-test-{delegated_thread_id}.jsonl").write_text(
+        "\n".join(json.dumps(item, ensure_ascii=False) for item in delegated_records) + "\n",
+        encoding="utf-8",
+    )
+    (sessions / f"rollout-test-{meta_thread_id}.jsonl").write_text(
+        "\n".join(json.dumps(item, ensure_ascii=False) for item in meta_records) + "\n",
+        encoding="utf-8",
+    )
+    (sessions / f"rollout-test-{quoted_thread_id}.jsonl").write_text(
+        "\n".join(json.dumps(item, ensure_ascii=False) for item in quoted_records) + "\n",
+        encoding="utf-8",
+    )
+
+
 class ExtractCodexThreadTests(unittest.TestCase):
     def run_script(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -219,6 +348,32 @@ class ExtractCodexThreadTests(unittest.TestCase):
             payload = json.loads(Path(summary["json_path"]).read_text(encoding="utf-8"))
             self.assertEqual(payload["diagnostics"]["selected_lines"], 5)
             self.assertTrue(all(item["line"] <= 6 for item in payload["messages"]))
+
+    def test_find_prefers_real_thread_hits_over_meta_tool_mentions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex_home = root / "codex-home"
+            write_find_ranking_fixture(codex_home)
+
+            result = self.run_script(
+                "--codex-home",
+                str(codex_home),
+                "--find",
+                "资料页 打开后 第一次 加载 慢",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            matches = json.loads(result.stdout)
+            self.assertEqual(
+                [item["thread_name"] for item in matches[:4]],
+                ["raw prompt thread", "delegated prompt thread", "quoted audit thread", "meta audit thread"],
+            )
+            self.assertEqual(matches[0]["snippets"][0]["kind"], "message")
+            self.assertEqual(matches[0]["snippets"][0]["role"], "user")
+            self.assertFalse(matches[0]["snippets"][0]["codex_delegation"])
+            self.assertTrue(matches[1]["snippets"][0]["codex_delegation"])
+            self.assertEqual(matches[2]["snippets"][0]["kind"], "message")
+            self.assertIn(matches[3]["snippets"][0]["kind"], {"function_call", "function_call_output"})
 
     def test_corrupt_line_is_reported_and_parsed_records_survive(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

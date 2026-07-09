@@ -62,6 +62,13 @@ python "$env:USERPROFILE\.codex\skills\codex-thread-extractor\scripts\extract_co
 python "$env:USERPROFILE\.codex\skills\codex-thread-extractor\scripts\extract_codex_thread.py" --find "search clue"
 ```
 
+Practical routing in Codex:
+
+- Quick recent-status check: prefer native `read_thread`.
+- Resume/continue old work without loading the whole thread: prefer `--resume-brief --brief-only`.
+- Long/damaged thread recovery: add `--recovery`, then `--index` or line ranges only where needed.
+- Clue-based thread lookup: use `--find`; ranking prefers direct user/delegation hits over audit and tool-meta mentions of the same clue.
+
 Default output is written under:
 
 ```text
