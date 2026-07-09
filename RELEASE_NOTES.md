@@ -1,5 +1,18 @@
 # Release Notes
 
+## v1.0.1 - Delegated Trace Detection
+
+### Fixed
+
+- Detects `codex_delegation` user-message wrappers and records delegation
+  diagnostics.
+- Clarifies that delegated traces are not valid evidence for pure natural
+  prompt validation.
+
+### Verification
+
+- `python scripts\verify_plugin.py`
+
 ## v1.0.0 - Initial Public Release
 
 Initial open-source release of Codex Thread Extractor for Codex Desktop.

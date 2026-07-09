@@ -41,6 +41,15 @@ For very long threads, start with `--index`, then open only `--last`, `--from-li
 
 For clue-based lookup, use stable fragments from the user's request: title words, project or file paths, commands, errors, tool output, quoted message text, or topic terms. Use returned snippets to choose candidates; ask for one narrowing detail only when candidates remain ambiguous.
 
+## Natural Prompt Validation
+
+When auditing whether a skill/rule works on ordinary user prompts, first check `diagnostics.codex_delegation_count`.
+
+- If it is greater than `0`, report the trace as delegated, not a pure natural-prompt run.
+- Treat `<input>` as the intended prompt only; the model-visible prompt also contained delegation metadata.
+- Do not use such a trace to prove automatic triggering, baseline behavior, or no-contamination behavior.
+- For full-trace natural validation, use a thread created by the user/UI or another raw-prompt path that leaves no `<codex_delegation>` wrapper.
+
 ## Continuation Fast Path
 
 For old-thread continuation, do not load the full old thread first.

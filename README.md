@@ -81,10 +81,14 @@ Depending on the flags, the extractor can create:
 - recent-tool and verification-aware resume briefs
 - recovery packets for continuing interrupted or damaged threads
 - diagnostics for skipped injected context, JSON decode errors, selected line
-  ranges, and parsed message counts
+  ranges, delegated prompts, and parsed message counts
 
 By default, injected `AGENTS.md` and environment context are skipped to reduce
 noise and avoid wasting context.
+
+When a trace contains a `codex_delegation` wrapper, diagnostics mark it as a
+delegated run. Use that trace for delegation/recovery audits, not as proof of
+ordinary user-prompt behavior.
 
 ## Development
 

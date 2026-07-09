@@ -248,6 +248,55 @@ class ExtractCodexThreadTests(unittest.TestCase):
             self.assertEqual(summary["diagnostics"]["json_decode_error_count"], 1)
             self.assertTrue(Path(summary["resume_brief_json_path"]).exists())
 
+    def test_codex_delegation_wrapper_is_diagnosed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex_home = root / "codex-home"
+            out_dir = root / "out"
+            write_fixture(codex_home)
+            session_path = next((codex_home / "sessions").rglob(f"*{THREAD_ID}*.jsonl"))
+            delegated_prompt = (
+                "<codex_delegation>\n"
+                "  <source_thread_id>99999999-8888-7777-6666-555555555555</source_thread_id>\n"
+                "  <input>Natural request only.</input>\n"
+                "</codex_delegation>"
+            )
+            session_path.write_text(
+                session_path.read_text(encoding="utf-8")
+                + json.dumps(
+                    {
+                        "type": "response_item",
+                        "timestamp": "2026-07-09T00:00:05Z",
+                        "payload": {"type": "message", "role": "user", "content": delegated_prompt},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            result = self.run_script(
+                THREAD_ID,
+                "--codex-home",
+                str(codex_home),
+                "--out-dir",
+                str(out_dir),
+                "--resume-brief",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            summary = json.loads(result.stdout)
+            self.assertEqual(summary["diagnostics"]["codex_delegation_count"], 1)
+            self.assertEqual(summary["diagnostics"]["codex_delegation_lines"], [11])
+            self.assertEqual(
+                summary["diagnostics"]["codex_delegation_source_thread_ids"],
+                ["99999999-8888-7777-6666-555555555555"],
+            )
+            payload = json.loads(Path(summary["json_path"]).read_text(encoding="utf-8"))
+            delegated = [item for item in payload["messages"] if item.get("codex_delegation")]
+            self.assertEqual(delegated[0]["delegation_input"], "Natural request only.")
+            brief = json.loads(Path(summary["resume_brief_json_path"]).read_text(encoding="utf-8"))
+            self.assertTrue(any("pure natural-prompt validation" in item for item in brief["resume_protocol"]))
+
 
 if __name__ == "__main__":
     unittest.main()
